@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,9 +26,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
-        {children}
+        <main className="flex-1">{children}</main>
+        <footer className="bg-gray-100 border-t py-4 text-center text-sm text-gray-600">
+          <div className="container mx-auto">
+            <Link href="/rti" className="hover:underline">Right to Information</Link>
+            <span className="mx-2">|</span>
+            <span>© {new Date().getFullYear()} Solapur Municipal Corporation</span>
+          </div>
+        </footer>
       </body>
     </html>
   );

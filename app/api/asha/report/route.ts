@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { logAudit } from '@/lib/audit';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     // Expect body to contain: workerId, wardCode, reportDate, feverCount, coughCount, diarrheaCount, maternalRiskFlags, childRiskFlags, environmentalFlags, locationLat, locationLng
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
       [workerId, wardCode, reportDate, feverCount, coughCount, diarrheaCount, JSON.stringify(maternalRiskFlags), JSON.stringify(childRiskFlags), JSON.stringify(environmentalFlags), locationLat, locationLng]
     );
 
+    await logAudit(request, 'INSERT', 'asha_reports', result.rows[0].id, null, body);
     return NextResponse.json({ success: true, reportId: result.rows[0].id });
   } catch (error) {
     console.error(error);

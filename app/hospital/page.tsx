@@ -15,18 +15,39 @@ interface HospitalReport {
 
 export default function HospitalDashboard() {
   const [latest, setLatest] = useState<HospitalReport | null>(null);
-  const hospitalId = 1; // hardcoded for demo; in real app get from JWT
+  const [hospitalId, setHospitalId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/hospital/reports?hospitalId=${hospitalId}`)
+    // Fetch current user
+    fetch('/api/auth/me')
       .then(res => res.json())
-      .then(data => setLatest(data[0])); // first is latest
+      .then(user => {
+        if (user.facilityId) {
+          setHospitalId(user.facilityId);
+          // Then fetch reports
+          return fetch(`/api/hospital/reports?hospitalId=${user.facilityId}`);
+        } else {
+          throw new Error('No facility ID');
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        setLatest(data[0]);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, []);
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Hospital Dashboard</h1>
-      {latest && (
+      {latest ? (
         <div className="bg-white p-6 rounded shadow mb-6">
           <h2 className="text-xl font-semibold mb-4">Last Report: {latest.report_date}</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -36,6 +57,8 @@ export default function HospitalDashboard() {
             <div>Oxygen: {latest.oxygen_available ? 'Yes' : 'No'}</div>
           </div>
         </div>
+      ) : (
+        <p className="mb-6">No reports yet.</p>
       )}
       <Link href="/hospital/report/new" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
         + New Report

@@ -8,11 +8,33 @@ import { Button } from '@/components/ui/button';
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [showDispatchModal, setShowDispatchModal] = useState(false);
+  const [dispatchForm, setDispatchForm] = useState({ type: 'Outbreak', severity: 'high', ward_code: 'Ward 1', title: '', description: '' });
 
   useEffect(() => {
     fetch('/api/dashboard/alerts')
-      .then(res => res.json())
-      .then(setAlerts);
+      .then(async res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch alerts.');
+        }
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Received non-JSON response.');
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAlerts(data);
+        } else {
+          console.error('Unexpected data format for alerts:', data);
+          setAlerts([]);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching alerts:', error);
+        setAlerts([]);
+      });
   }, []);
 
   const getSeverityBadge = (severity: string) => {
@@ -36,9 +58,27 @@ export default function AlertsPage() {
     }
   };
 
+  const handleDispatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch('/api/admin/alerts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dispatchForm),
+    });
+    if (res.ok) {
+      setShowDispatchModal(false);
+      const { data } = await res.json();
+      if (data) setAlerts([data, ...alerts]);
+      setDispatchForm({ type: 'Outbreak', severity: 'high', ward_code: 'Ward 1', title: '', description: '' });
+    }
+  };
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Alert Management</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Alert Management</h1>
+        <Button onClick={() => setShowDispatchModal(true)}>Dispatch Alert</Button>
+      </div>
       <div className="bg-white rounded shadow">
         <Table>
           <TableHeader>
@@ -77,6 +117,64 @@ export default function AlertsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {showDispatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded max-w-lg w-full p-6 shadow-xl relative">
+            <h3 className="text-xl font-bold mb-4">Dispatch Manual Alert</h3>
+            <form onSubmit={handleDispatch} className="space-y-4 bg-white">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Type</label>
+                  <select 
+                    className="w-full border rounded p-2" 
+                    value={dispatchForm.type} onChange={e => setDispatchForm({...dispatchForm, type: e.target.value})}
+                  >
+                    <option>Outbreak</option><option>Weather</option><option>System</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Severity</label>
+                  <select 
+                    className="w-full border rounded p-2" 
+                    value={dispatchForm.severity} onChange={e => setDispatchForm({...dispatchForm, severity: e.target.value})}
+                  >
+                    <option value="low">Low</option><option value="medium">Medium</option>
+                    <option value="high">High</option><option value="critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <label className="block text-sm font-medium mb-1">Ward Code</label>
+                   <input 
+                     type="text" className="w-full border rounded p-2" required
+                     value={dispatchForm.ward_code} onChange={e => setDispatchForm({...dispatchForm, ward_code: e.target.value})}
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium mb-1">Title</label>
+                   <input 
+                     type="text" className="w-full border rounded p-2" required
+                     value={dispatchForm.title} onChange={e => setDispatchForm({...dispatchForm, title: e.target.value})}
+                   />
+                 </div>
+              </div>
+              <div>
+                 <label className="block text-sm font-medium mb-1">Description</label>
+                 <textarea 
+                   className="w-full border rounded p-2" rows={3} required
+                   value={dispatchForm.description} onChange={e => setDispatchForm({...dispatchForm, description: e.target.value})}
+                 />
+              </div>
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button variant="outline" type="button" onClick={() => setShowDispatchModal(false)}>Cancel</Button>
+                <Button type="submit">Deploy Alert Trigger</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

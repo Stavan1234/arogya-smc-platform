@@ -12,7 +12,8 @@ export async function GET(request: Request) {
         report_date as date,
         SUM(fever_count) as fever,
         SUM(cough_count) as cough,
-        SUM(diarrhea_count) as diarrhea
+        SUM(diarrhea_count) as diarrhea,
+        SUM(fever_count + cough_count + diarrhea_count) as total_cases
       FROM asha_reports
       WHERE report_date >= CURRENT_DATE - $1::interval
     `;
